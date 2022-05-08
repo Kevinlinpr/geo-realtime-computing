@@ -1,0 +1,1 @@
+collector 的数据经过 server 中转分发到 cuda , cuda 进行耗时计算后将计算结果经过 server 中转返回给 collector
