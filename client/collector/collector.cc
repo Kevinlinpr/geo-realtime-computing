@@ -30,8 +30,8 @@ int main(int argc, char** argv)
     Collector::Get().session_p = session_p;
 
     std::thread commit_mission([](){
-        for(int i = 0;i<100;++i){
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+        for(int i = 0;1<100;++i){
+            std::this_thread::sleep_for(std::chrono::microseconds(100));
             Collector::Get().Commit("Fuck you mother " + std::to_string(i));
         }
     });

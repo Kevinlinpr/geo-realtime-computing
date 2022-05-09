@@ -15,15 +15,18 @@ int main(int argc, char** argv)
     auto const port = argv[2];
     auto const text = argv[3];
 
-    // The io_context is required for all I/O
-    net::io_context ioc;
+    while(true){
+        std::cout<<"Restart"<<std::endl;
+        // The io_context is required for all I/O
+        net::io_context ioc;
 
-    // Launch the asynchronous operation
-    std::make_shared<session>(ioc, session::sessiontype::cuda)->run(host, port, text);
+        // Launch the asynchronous operation
+        std::make_shared<session>(ioc, session::sessiontype::cuda)->run(host, port, text);
 
-    // Run the I/O service. The call will return when
-    // the socket is closed.
-    ioc.run();
+        // Run the I/O service. The call will return when
+        // the socket is closed.
+        ioc.run();
+    }
 
     return EXIT_SUCCESS;
 }

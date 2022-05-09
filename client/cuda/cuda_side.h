@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <boost/asio.hpp>
 
 namespace beast = boost::beast;         // from <boost/beast.hpp>
 namespace http = beast::http;           // from <boost/beast/http.hpp>
@@ -179,11 +180,17 @@ public:
     on_finish(
         beast::error_code ec,
         std::size_t bytes_transferred){
-            ws_.async_read(
+
+            if(!ec){
+                ws_.async_read(
                 buffer_,
                 beast::bind_front_handler(
                     &session::on_read,
                     shared_from_this()));
+            }else{
+                std::cout<<"on finished : "<<ec.what()<<std::endl;
+            }
+            
     }
 
     void
@@ -193,22 +200,35 @@ public:
     {
         boost::ignore_unused(bytes_transferred);
 
-        if(ec)
-            return fail(ec, "read");
+        if(ec){
+            fail(ec, "read");
+            return;
+        }else{
+            std::cout<<"on read"<<std::endl;
+            std::cout << beast::make_printable(buffer_.data()) << std::endl;
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            
+                    
+            std::string s(boost::asio::buffer_cast<const char*>(buffer_.data()),buffer_.size());
+            buffer_.clear();
 
-        std::cout << beast::make_printable(buffer_.data()) << std::endl;
-            
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        // 计算并返回数据
-            
-        std::string s(boost::asio::buffer_cast<const char*>(buffer_.data()),buffer_.size());
-        buffer_.clear();
-        ws_.async_write(
-                net::buffer((s + " back")),
-                beast::bind_front_handler(
-                    &session::on_finish,
-                    shared_from_this()));
-        
+            if(s[0] == 'C'){
+                std::cout<<"FUCK"<<std::endl;
+                ws_.async_read(
+                        buffer_,
+                        beast::bind_front_handler(
+                                &session::on_read,
+                                shared_from_this()));
+            }else{
+                // 计算并返回数据
+                std::cout<<"write result"<<std::endl;
+                ws_.async_write(
+                        net::buffer((s + " back")),
+                        beast::bind_front_handler(
+                            &session::on_finish,
+                            shared_from_this()));
+            }
+        }
     }
 
     void

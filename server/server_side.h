@@ -124,33 +124,57 @@ public:
         run();
     }
 
+    void on_collector_disconnected(beast::error_code ec,
+        std::size_t bytes_transferred){
+        buffer_.clear();
+    }
+
     void on_read( beast::error_code ec, std::size_t bytes_transferred) {
 
         boost::ignore_unused(bytes_transferred);
 
         // This indicates that the session was closed
-        if(ec == websocket::error::closed)
+        if(ec == websocket::error::closed){
+            std::cout<<"websocket closed"<<std::endl;
             return;
-
-        if(ec)
-            fail(ec, "read");
-
-        if(type == sessiontype::collector){
-            Schedulor::Get().cuda->ws_.text(Schedulor::Get().cuda->ws_.got_text());
-            Schedulor::Get().cuda->ws_.async_write(
-                        buffer_.data(),
-                        beast::bind_front_handler(
-                            &session::do_nothing,
-                            shared_from_this()));
-        }else if(type == sessiontype::cuda) {
-            Schedulor::Get().collector->ws_.text(Schedulor::Get().collector->ws_.got_text());
-            Schedulor::Get().collector->ws_.async_write(
-                        buffer_.data(),
-                        beast::bind_front_handler(
-                            &session::do_nothing,
-                            shared_from_this()));
         }
         
+        if(ec){
+            Schedulor::Get().collector = nullptr;
+            // Schedulor::Get().cuda->ws_.text(Schedulor::Get().cuda->ws_.got_text());
+            //         Schedulor::Get().cuda->ws_.async_write(
+            //                         net::buffer("COLLECTOR_CLOSED"),
+            //                         beast::bind_front_handler(
+            //                             &session::on_collector_disconnected,
+            //                             shared_from_this()));
+            fail(ec, "read");
+        }else {
+            if(Schedulor::Get().collector == nullptr || Schedulor::Get().cuda == nullptr){
+                std::cout<<"have nullptr"<<std::endl;
+                Schedulor::Get().cuda->ws_.text(Schedulor::Get().cuda->ws_.got_text());
+                    Schedulor::Get().cuda->ws_.async_write(
+                                    net::buffer("COLLECTOR_CLOSED"),
+                                    beast::bind_front_handler(
+                                        &session::on_collector_disconnected,
+                                        shared_from_this()));
+            }else {
+                if(type == sessiontype::collector){
+                    Schedulor::Get().cuda->ws_.text(Schedulor::Get().cuda->ws_.got_text());
+                    Schedulor::Get().cuda->ws_.async_write(
+                                    buffer_.data(),
+                                    beast::bind_front_handler(
+                                        &session::do_nothing,
+                                        shared_from_this()));
+                }else if(type == sessiontype::cuda) {
+                    Schedulor::Get().collector->ws_.text(Schedulor::Get().collector->ws_.got_text());
+                    Schedulor::Get().collector->ws_.async_write(
+                                buffer_.data(),
+                                beast::bind_front_handler(
+                                    &session::do_nothing,
+                                    shared_from_this()));
+                }
+            }
+        } 
     }
 
 };
