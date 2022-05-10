@@ -33,7 +33,6 @@ class session : public std::enable_shared_from_this<session>
     websocket::stream<beast::tcp_stream> ws_;
     beast::flat_buffer buffer_;
     std::string host_;
-    std::string text_;
 
 public:
 
@@ -74,12 +73,10 @@ public:
     void
     run(
         char const* host,
-        char const* port,
-        char const* text)
+        char const* port)
     {
         // Save these for later
         host_ = host;
-        text_ = text;
 
         // Look up the domain name
         resolver_.async_resolve(

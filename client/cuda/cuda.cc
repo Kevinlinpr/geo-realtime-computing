@@ -6,9 +6,9 @@ int main(int argc, char** argv)
     if(argc != 4)
     {
         std::cerr <<
-            "Usage: websocket-client-async <host> <port> <text>\n" <<
+            "Usage: websocket-client-async <host> <port>\n" <<
             "Example:\n" <<
-            "    websocket-client-async echo.websocket.org 80 \"Hello, world!\"\n";
+            "    websocket-client-async echo.websocket.org 80\n";
         return EXIT_FAILURE;
     }
     auto const host = argv[1];
@@ -16,12 +16,11 @@ int main(int argc, char** argv)
     auto const text = argv[3];
 
     while(true){
-        std::cout<<"Restart"<<std::endl;
         // The io_context is required for all I/O
         net::io_context ioc;
 
         // Launch the asynchronous operation
-        std::make_shared<session>(ioc, session::sessiontype::cuda)->run(host, port, text);
+        std::make_shared<session>(ioc, session::sessiontype::cuda)->run(host, port);
 
         // Run the I/O service. The call will return when
         // the socket is closed.
