@@ -68,6 +68,7 @@ public:
 
     void msg_from_collector(){
         std::string msg_from_collector = Schedulor::Get().cuda_send_pop();
+
         if(msg_from_collector == "[COLLECTOR_CLOSE]"){
             ws.async_write(
                     net::buffer(msg_from_collector),

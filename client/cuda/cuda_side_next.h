@@ -243,6 +243,8 @@ private:
                 beast::bind_front_handler(
                     &Session::wait_task_id,
                     shared_from_this()));
+        }else{
+            wait_task();
         }
     }
 
@@ -303,6 +305,8 @@ private:
                            beast::bind_front_handler(
                                    &Session::realtime_data_recieve_done,
                                    shared_from_this()));
+        }else if(payload == "[COLLECTOR_CLOSE]" || payload == "TASK_START"){
+            wait_task();
         }else{
             std::cout<<"realtime data recieve :" << payload<<std::endl;
             std::vector<std::string> ret = split(payload, ": ");
