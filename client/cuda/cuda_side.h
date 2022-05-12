@@ -1,6 +1,21 @@
 #ifndef GEO_REALTIME_COMPUTING_CUDA_SIDE_H_
 #define GEO_REALTIME_COMPUTING_CUDA_SIDE_H_
 
+// collector send to cuda
+// protocol format :
+// index | content
+// example :
+// 0 | 2022-5-10 10:10:00 | {...JSON inial Model ...} | task_id
+// 1 | [12,32,12,4343,532,523,5,33,523,55...]
+// 2 | [...]
+// 3 | [...]
+
+// cuda send to collector
+// protocol format :
+// index | context
+// example :
+// 0 | [...]
+
 #include <boost/beast/core.hpp>
 #include <boost/beast/websocket.hpp>
 #include <boost/asio/strand.hpp>
@@ -8,6 +23,10 @@
 #include <functional>
 #include <iostream>
 #include <memory>
+#include <thread>
+#include <queue>
+#include <condition_variable>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <boost/asio.hpp>
@@ -34,8 +53,47 @@ class session : public std::enable_shared_from_this<session>
     beast::flat_buffer buffer_;
     std::string host_;
 
-public:
+    std::mutex m_;
+    std::condition_variable con_;
+    std::queue<std::string> msgs_;
 
+    std::mutex recieve_m_;
+    std::condition_variable recieve_con_;
+    std::queue<std::string> recieve_msg_;
+
+public:
+    void Push(const std::string& msg) {
+        {
+            std::lock_guard<std::mutex> lock(m_);
+            msgs_.push(msg);
+        }
+        con_.notify_one();
+    }
+
+    std::string Pop() {
+        std::unique_lock<std::mutex> lock(m_);
+        con_.wait(lock,[this]{return !(msgs_.size() == 0);});
+        std::string msg = msgs_.front();
+        msgs_.pop();
+        return msg;
+    }
+
+    void RecieveResultMsg(const std::string& msg){
+        {
+            std::lock_guard<std::mutex> lock(recieve_m_);
+            recieve_msg_.push(msg);
+        }
+        recieve_con_.notify_one();
+    }
+
+    std::string ReadResultMsg(){
+        std::unique_lock<std::mutex> lock(recieve_m_);
+        recieve_con_.wait(lock,[this]{return !(recieve_msg_.size() == 0);});
+        std::string msg = recieve_msg_.front();
+        std::cout<<"ReadResultMsg : "<<msg<<std::endl;
+        recieve_msg_.pop();
+        return msg;
+    }
     enum class sessiontype {
         collector,
         cuda,
@@ -66,6 +124,8 @@ public:
         : resolver_(net::make_strand(ioc))
         , ws_(net::make_strand(ioc))
         , type(stype)
+        , msgs_()
+        , recieve_msg_()
     {
     }
 
@@ -203,24 +263,28 @@ public:
         }else{
             std::cout<<"on read"<<std::endl;
             std::cout << beast::make_printable(buffer_.data()) << std::endl;
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            std::string recieved_msg(boost::asio::buffer_cast<const char*>(buffer_.data()),buffer_.size());
+            
+            // std::this_thread::sleep_for(std::chrono::milliseconds(10));
             
                     
-            std::string s(boost::asio::buffer_cast<const char*>(buffer_.data()),buffer_.size());
+            // std::string s(boost::asio::buffer_cast<const char*>(buffer_.data()),buffer_.size());
+            
             buffer_.clear();
 
-            if(s[0] == 'C'){
+            if(recieved_msg[0] == 'C'){
                 std::cout<<"FUCK"<<std::endl;
-                ws_.async_read(
-                        buffer_,
-                        beast::bind_front_handler(
-                                &session::on_read,
-                                shared_from_this()));
+                // ws_.async_read(
+                //         buffer_,
+                //         beast::bind_front_handler(
+                //                 &session::on_read,
+                //                 shared_from_this()));
             }else{
-                // 计算并返回数据
-                std::cout<<"write result"<<std::endl;
+                RecieveResultMsg(recieved_msg);
+
+                std::string computed_result = Pop();
                 ws_.async_write(
-                        net::buffer((s + " back")),
+                        net::buffer(computed_result),
                         beast::bind_front_handler(
                             &session::on_finish,
                             shared_from_this()));
@@ -239,6 +303,34 @@ public:
         // The make_printable() function helps print a ConstBufferSequence
         std::cout << beast::make_printable(buffer_.data()) << std::endl;
     }
+};
+
+class Cuda {
+public:
+    Cuda(const Cuda&) = delete;
+    Cuda& operator=(const Cuda&) = delete;
+
+
+    static Cuda& Get(){
+        static Cuda cuda;
+        return cuda;
+    }
+
+    void Commit(const std::string& msg) {
+        session_p->Push(msg);
+    }
+
+    std::string Recieve() {
+        return session_p->ReadResultMsg();
+    }
+
+    void FreeBlock() {
+        session_p->RecieveResultMsg("COLLECTOR_CLOSED");
+    }
+
+    std::shared_ptr<session> session_p;
+private:
+    Cuda() = default;
 };
 
 #endif // GEO_REALTIME_COMPUTING_CUDA_SIDE_H_

@@ -140,36 +140,42 @@ public:
         }
         
         if(ec){
+            // if(Schedulor::Get().cuda){
+            //     Schedulor::Get().cuda->ws_.text(Schedulor::Get().cuda->ws_.got_text());
+            //     Schedulor::Get().cuda->ws_.async_write(
+            //             net::buffer("COLLECTOR_CLOSED"),
+            //             beast::bind_front_handler(
+            //                     &session::do_nothing,
+            //                     shared_from_this()));
+            // }
+            // if(Schedulor::Get().collector){
+            //     Schedulor::Get().collector->ws_.text(Schedulor::Get().collector->ws_.got_text());
+            //     Schedulor::Get().collector->ws_.async_write(
+            //             net::buffer("CUDA_CLOSED"),
+            //             beast::bind_front_handler(
+            //                     &session::do_nothing,
+            //                     shared_from_this()));
+            // }
             Schedulor::Get().collector = nullptr;
-            // Schedulor::Get().cuda->ws_.text(Schedulor::Get().cuda->ws_.got_text());
-            //         Schedulor::Get().cuda->ws_.async_write(
-            //                         net::buffer("COLLECTOR_CLOSED"),
-            //                         beast::bind_front_handler(
-            //                             &session::on_collector_disconnected,
-            //                             shared_from_this()));
+            // Schedulor::Get().cuda = nullptr;
             fail(ec, "read");
+            return;
         }else {
-            if(Schedulor::Get().collector == nullptr || Schedulor::Get().cuda == nullptr){
-                std::cout<<"have nullptr"<<std::endl;
-                Schedulor::Get().cuda->ws_.text(Schedulor::Get().cuda->ws_.got_text());
-                    Schedulor::Get().cuda->ws_.async_write(
-                                    net::buffer("COLLECTOR_CLOSED"),
-                                    beast::bind_front_handler(
-                                        &session::on_collector_disconnected,
-                                        shared_from_this()));
-            }else {
-                if(type == sessiontype::collector){
+            if(type == sessiontype::collector){
+                if(Schedulor::Get().cuda){
                     Schedulor::Get().cuda->ws_.text(Schedulor::Get().cuda->ws_.got_text());
                     Schedulor::Get().cuda->ws_.async_write(
-                                    buffer_.data(),
-                                    beast::bind_front_handler(
-                                        &session::do_nothing,
-                                        shared_from_this()));
-                }else if(type == sessiontype::cuda) {
+                            buffer_.data(),
+                            beast::bind_front_handler(
+                                    &session::do_nothing,
+                                    shared_from_this()));
+                }
+            }else if(type == sessiontype::cuda) {
+                if(Schedulor::Get().collector){
                     Schedulor::Get().collector->ws_.text(Schedulor::Get().collector->ws_.got_text());
                     Schedulor::Get().collector->ws_.async_write(
-                                buffer_.data(),
-                                beast::bind_front_handler(
+                            buffer_.data(),
+                            beast::bind_front_handler(
                                     &session::do_nothing,
                                     shared_from_this()));
                 }

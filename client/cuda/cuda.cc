@@ -1,31 +1,21 @@
-#include "cuda_side.h"
+#include "cuda_side_next.h"
 
 int main(int argc, char** argv)
 {
-    // Check command line arguments.
-    if(argc != 4)
-    {
-        std::cerr <<
-            "Usage: websocket-client-async <host> <port>\n" <<
-            "Example:\n" <<
-            "    websocket-client-async echo.websocket.org 80\n";
-        return EXIT_FAILURE;
-    }
-    auto const host = argv[1];
-    auto const port = argv[2];
-    auto const text = argv[3];
+    std::cout<<"START"<<std::endl;
+    net::io_context ioc;
+    std::shared_ptr<Session> session_p;
+    session_p = std::make_shared<Session>(ioc, Session::SessionType::cuda);
+    session_p->Connect("127.0.0.1", "8833");
 
-    while(true){
-        // The io_context is required for all I/O
-        net::io_context ioc;
-
-        // Launch the asynchronous operation
-        std::make_shared<session>(ioc, session::sessiontype::cuda)->run(host, port);
-
-        // Run the I/O service. The call will return when
-        // the socket is closed.
-        ioc.run();
-    }
-
-    return EXIT_SUCCESS;
+    std::thread computing([](){
+        while(true){
+            std::string data = Delivery::Get().RecievePop();
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            std::string result =  data + " from cuda";
+            Delivery::Get().CommitPush(result);
+        }
+    });
+    ioc.run();
+    computing.join();
 }

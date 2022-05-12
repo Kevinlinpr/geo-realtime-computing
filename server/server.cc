@@ -1,4 +1,4 @@
-#include "server_side.h"
+#include "server_side_next.h"
 
 int main(int argc, char** argv) {
     // Check command line arguments.
@@ -24,9 +24,9 @@ int main(int argc, char** argv) {
     v.reserve(threads - 1);
     for (auto i = threads - 1; i > 0; --i) {
         v.emplace_back(
-                [&ioc] {
-                    ioc.run();
-                });
+                    [&ioc] {
+                        ioc.run();
+                    });
     }
 
     ioc.run();

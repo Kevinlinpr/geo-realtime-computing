@@ -6,4 +6,4 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 include_directories(/opt/homebrew/Cellar/boost/1.78.0_1/include)
 project(Cuda)
 
-add_executable(Cuda cuda_side.h cuda.cc)
+add_executable(Cuda cuda_side_next.h cuda.cc)

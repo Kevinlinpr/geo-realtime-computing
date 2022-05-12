@@ -227,19 +227,29 @@ public:
         beast::error_code ec,
         std::size_t bytes_transferred){
             std::string result(boost::asio::buffer_cast<const char*>(buffer_.data()),buffer_.size());
-
-            RecieveResultMsg(result);
-
-            // std::cout << beast::make_printable(buffer_.data()) << std::endl;
             buffer_.clear();
-            // std::this_thread::sleep_for(std::chrono::seconds(1));
-            //Send the message
-            std::string msg = Pop();
-            ws_.async_write(
-                net::buffer(msg),
-                beast::bind_front_handler(
-                    &session::on_read,
-                    shared_from_this()));
+            if(result[0] == 'C'){
+                std::cout<<"FUCK"<<std::endl;
+                return;
+                // ws_.async_read(
+                //         buffer_,
+                //         beast::bind_front_handler(
+                //                 &session::on_read,
+                //                 shared_from_this()));
+            }else{
+                RecieveResultMsg(result);
+
+                // std::cout << beast::make_printable(buffer_.data()) << std::endl;
+                // std::this_thread::sleep_for(std::chrono::seconds(1));
+                //Send the message
+                std::string msg = Pop();
+                ws_.async_write(
+                    net::buffer(msg),
+                    beast::bind_front_handler(
+                        &session::on_read,
+                        shared_from_this()));
+            }
+            
     }
 
     void

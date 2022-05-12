@@ -6,4 +6,4 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 include_directories(/opt/homebrew/Cellar/boost/1.78.0_1/include)
 project(Server)
 
-add_executable(Server server_side.h schedulor.h server.cc)
+add_executable(Server server_side_next.h schedulor.h server.cc)
