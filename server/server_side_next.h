@@ -89,17 +89,25 @@ public:
 private:
 
     void reply_from_cuda(beast::error_code ec, std::size_t bytes_transferred){
-        ws.async_read(
+        if(ec){
+            fail(ec,"reply_from_cuda");
+        }else{
+            ws.async_read(
                 buffer_,
                 beast::bind_front_handler(
                     &CudaSession::reply_to_collector,
                     shared_from_this()));
+        }
     }
 
     void reply_to_collector(beast::error_code ec, std::size_t bytes_transferred){
-        std::string msg(boost::asio::buffer_cast<const char*>(buffer_.data()),buffer_.size());
-        buffer_.clear();
-        Schedulor::Get().collector_recieve_push(msg);
+        if(ec){
+            fail(ec,"reply_to_collector");
+        }else{
+            std::string msg(boost::asio::buffer_cast<const char*>(buffer_.data()),buffer_.size());
+            buffer_.clear();
+            Schedulor::Get().collector_recieve_push(msg);
+        }
     }
 
 
@@ -149,38 +157,43 @@ private:
     }
 
     void msg_from_collector(beast::error_code ec, std::size_t bytes_transferred){
-        std::string msg(boost::asio::buffer_cast<const char*>(buffer_.data()),bytes_transferred);
-        buffer_.clear();
-        std::cout<<msg<<std::endl;
-
-        if(msg == ""){
-            Schedulor::Get().cuda_send_push("[COLLECTOR_CLOSE]");
-            if(Schedulor::Get().CudaIsOnline()){
-                Schedulor::Get().cuda->msg_from_collector();
-            }
+        if(ec){
+            fail(ec,"msg_from_collector");
         }else{
-            Schedulor::Get().cuda_send_push(msg);
-            if(Schedulor::Get().CudaIsOnline()){
-                Schedulor::Get().cuda->msg_from_collector();
+            std::string msg(boost::asio::buffer_cast<const char*>(buffer_.data()),bytes_transferred);
+            buffer_.clear();
+            std::cout<<msg<<std::endl;
+
+            if(msg == ""){
+                Schedulor::Get().cuda_send_push("[COLLECTOR_CLOSE]");
+                if(Schedulor::Get().CudaIsOnline()){
+                    Schedulor::Get().cuda->msg_from_collector();
+                }
+            }else{
+                Schedulor::Get().cuda_send_push(msg);
+                if(Schedulor::Get().CudaIsOnline()){
+                    Schedulor::Get().cuda->msg_from_collector();
+                }
+                std::string reply_from_cuda = Schedulor::Get().collector_recieve_pop();
+                ws.async_write(
+                        net::buffer(reply_from_cuda),
+                        beast::bind_front_handler(
+                                &CollectorSession::route_from_collector,
+                                shared_from_this()));
             }
-            std::string reply_from_cuda = Schedulor::Get().collector_recieve_pop();
-            ws.async_write(
-                    net::buffer(reply_from_cuda),
-                    beast::bind_front_handler(
-                            &CollectorSession::route_from_collector,
-                            shared_from_this()));
         }
-
-
-
     }
 
     void route_from_collector(beast::error_code ec, std::size_t bytes_transferred){
-        ws.async_read(
+        if(ec){
+            fail(ec,"route_from_collector");
+        }else{
+            ws.async_read(
                         buffer_,
                         beast::bind_front_handler(
                             &CollectorSession::msg_from_collector,
                             shared_from_this()));
+        }
     }
 
 
